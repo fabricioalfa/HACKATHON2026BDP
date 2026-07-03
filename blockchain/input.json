@@ -1,0 +1,19 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "CreditCertificate.sol": {
+      "urls": ["contracts/CreditCertificate.sol"]
+    }
+  },
+  "settings": {
+    "outputSelection": {
+      "*": {
+        "*": ["abi", "evm.bytecode"]
+      }
+    },
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    }
+  }
+}

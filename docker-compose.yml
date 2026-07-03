@@ -1,0 +1,83 @@
+services:
+  ganache:
+    image: trufflesuite/ganache:latest
+    container_name: credit-ganache
+    ports:
+      - "7545:8545"
+    command:
+      - --deterministic
+      - --accounts
+      - "10"
+      - --wallet.defaultBalance
+      - "10000"
+      - --chain.chainId
+      - "1337"
+    networks:
+      - credit-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: credit-postgres
+    environment:
+      POSTGRES_DB: credit_certificates
+      POSTGRES_USER: credit_admin
+      POSTGRES_PASSWORD: credit_pass_2024
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - credit-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U credit_admin -d credit_certificates"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: credit-backend
+    environment:
+      BLOCKCHAIN_RPC: http://ganache:8545
+      PRIVATE_KEY: ${PRIVATE_KEY:-0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: credit_admin
+      DB_PASSWORD: credit_pass_2024
+      DB_NAME: credit_certificates
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
+      JWT_EXPIRES_IN: 8h
+      PORT: 3000
+      CONTRACT_ADDRESS: 0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ganache:
+        condition: service_started
+    networks:
+      - credit-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: credit-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    networks:
+      - credit-network
+
+volumes:
+  postgres-data:
+
+networks:
+  credit-network:
+    driver: bridge
